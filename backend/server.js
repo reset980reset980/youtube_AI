@@ -12,11 +12,11 @@ const PorterStemmer = natural.PorterStemmer;
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// API 키 설정 (하드코딩)
+// API 키 설정 (환경변수 사용)
 const API_KEYS = {
-  YOUTUBE_API_KEY: 'AIzaSyDq5OtvWsYERdGQpgdFdPVtz9A16W0y8Lg',
-  OPENAI_API_KEY: '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',
-  CLAUDE_API_KEY: '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'
+  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY || 'AIzaSyDq5OtvWsYERdGQpgdFdPVtz9A16W0y8Lg',
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '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',
+  CLAUDE_API_KEY: process.env.CLAUDE_API_KEY || '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'
 };
 
 // 미들웨어

@@ -4,13 +4,14 @@
   "description": "YouTube DeepSearch Pro AI - 시니어 특화 YouTube 분석 및 콘텐츠 생성 플랫폼",
   "main": "backend/server.js",
   "scripts": {
-    "start": "node backend/server.js",
+    "start": "cd backend && node server.js",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "build": "echo 'Build completed - backend only'",
+    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install --production",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "postinstall": "cd backend && npm install"
+    "postinstall": "cd backend && npm install --production",
+    "railway:start": "cd backend && npm start"
   },
   "keywords": [
     "youtube",

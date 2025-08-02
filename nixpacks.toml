@@ -1,0 +1,18 @@
+# Railway Nixpacks 설정 - Natural 라이브러리 빌드 지원
+
+[phases.setup]
+nixPkgs = ["nodejs-18_x", "python3", "gcc", "gnumake", "pkg-config"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = [
+  "cd frontend && npm install && npm run build",
+  "mkdir -p backend/dist",
+  "cp -r frontend/dist/* backend/dist/",
+  "cd backend && npm install --production"
+]
+
+[start]
+cmd = "cd backend && npm start"

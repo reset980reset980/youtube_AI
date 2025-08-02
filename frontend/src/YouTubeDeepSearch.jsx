@@ -5,7 +5,18 @@ import * as XLSX from 'xlsx';
 const YouTubeDeepSearch = () => {
   // API 키 관리
   const [apiKeys, setApiKeys] = useState(['']);
-  const [backendUrl, setBackendUrl] = useState('http://localhost:3001'); // 백엔드 서버 URL (고정)
+  // 백엔드 서버 URL (환경별 자동 설정)
+  const getDefaultBackendUrl = () => {
+    // Railway 프로덕션 환경 감지 (통합 배포)
+    if (window.location.hostname.includes('railway.app') || window.location.hostname.includes('up.railway.app')) {
+      // 같은 도메인에서 API 제공
+      return window.location.origin;
+    }
+    // 로컬 개발 환경
+    return 'http://localhost:3001';
+  };
+  
+  const [backendUrl, setBackendUrl] = useState(getDefaultBackendUrl());
   
   // 검색 옵션
   const [searchKeyword, setSearchKeyword] = useState('');
