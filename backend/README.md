@@ -57,6 +57,14 @@ YouTube Data API v3 키가 필요합니다:
 3. YouTube Data API v3 활성화
 4. API 키 발급
 
+로컬 실행 시 `backend/.env.example`을 참고해 `backend/.env` 파일을 만들고 실제 키를 설정하세요. `.env` 파일은 커밋하지 않습니다.
+
+```bash
+YOUTUBE_API_KEY=your_youtube_data_api_key
+OPENAI_API_KEY=your_openai_api_key
+CLAUDE_API_KEY=your_claude_api_key
+```
+
 ## 📈 성능
 
 - **처리량**: 초당 100+ 요청 처리 가능

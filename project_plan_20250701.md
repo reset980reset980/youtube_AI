@@ -7,10 +7,12 @@
 - **기술 스택**: Node.js (백엔드), React + Vite (프론트엔드)
 
 ## 🔑 API 키 정보
-### 제공받은 API 키들:
-- **YouTube API**: `AIzaSyDq5OtvWsYERdGQpgdFdPVtz9A16W0y8Lg` ✅ 작동
-- **OpenAI API**: `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` ❌ 키 오류
-- **Claude API**: `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` ❌ 모델명 오류
+### 환경변수로 설정할 API 키들:
+- **YouTube API**: `YOUTUBE_API_KEY`
+- **OpenAI API**: `OPENAI_API_KEY`
+- **Claude API**: `CLAUDE_API_KEY`
+
+실제 API 키는 저장소에 커밋하지 말고 `backend/.env` 또는 배포 환경변수로만 설정합니다.
 
 ## 🏗️ 시스템 구조
 ### 백엔드 (포트 3001)
@@ -151,4 +153,4 @@ Error: model: claude-3-sonnet-20240229
 ---
 **작성일**: 2025년 7월 1일  
 **작성자**: AI Assistant  
-**프로젝트 위치**: D:\youtube\ 
+**프로젝트 위치**: D:\youtube\

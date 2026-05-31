@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const natural = require('natural');
 const TfIdf = natural.TfIdf;
 const WordTokenizer = natural.WordTokenizer;
@@ -12,11 +13,28 @@ const PorterStemmer = natural.PorterStemmer;
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const getEnv = (name) => {
+  const value = process.env[name];
+  return value && value.trim() ? value.trim() : null;
+};
+
+const maskKey = (key) => {
+  if (!key) return 'not configured';
+  return `${key.slice(0, 6)}...${key.slice(-4)}`;
+};
+
+const requireApiKey = (key, envName, serviceName) => {
+  if (!key) {
+    throw new Error(`${serviceName} API 키가 설정되지 않았습니다. ${envName} 환경변수를 설정해주세요.`);
+  }
+  return key;
+};
+
 // API 키 설정 (환경변수 사용)
 const API_KEYS = {
-  YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY || 'AIzaSyDq5OtvWsYERdGQpgdFdPVtz9A16W0y8Lg',
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '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',
-  CLAUDE_API_KEY: process.env.CLAUDE_API_KEY || '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'
+  YOUTUBE_API_KEY: getEnv('YOUTUBE_API_KEY'),
+  OPENAI_API_KEY: getEnv('OPENAI_API_KEY'),
+  CLAUDE_API_KEY: getEnv('CLAUDE_API_KEY')
 };
 
 // 미들웨어
@@ -386,24 +404,21 @@ const personalization = new PersonalizationEngine();
 // API 키 로테이션 관리
 class ApiKeyManager {
   constructor() {
-    this.keys = [API_KEYS.YOUTUBE_API_KEY]; // 기본 API 키 설정
+    this.keys = [];
     this.currentIndex = 0;
     this.keyUsage = new Map();
     this.dailyLimit = 9500;
     this.quotaExhaustedKeys = new Set(); // 할당량 초과된 키들 추적
+    this.setKeys([API_KEYS.YOUTUBE_API_KEY]);
   }
 
   setKeys(keys) {
-    if (keys && keys.length > 0) {
-      // 새로운 키들 추가 (중복 제거)
-      const newKeys = keys.filter(key => key && key.trim());
-      const allKeys = [...new Set([...this.keys, ...newKeys])];
-      this.keys = allKeys;
-      console.log(`🔑 API 키 업데이트: 총 ${this.keys.length}개 키 사용 가능`);
-    } else {
-      this.keys = [API_KEYS.YOUTUBE_API_KEY]; // 기본값 유지
-    }
+    const newKeys = (keys || [])
+      .map(key => key && key.trim())
+      .filter(Boolean);
+    this.keys = [...new Set([...this.keys, ...newKeys])];
     this.currentIndex = 0;
+    console.log(`🔑 YouTube API 키 설정: 총 ${this.keys.length}개 키 사용 가능`);
   }
 
   addKey(newKey) {
@@ -422,6 +437,11 @@ class ApiKeyManager {
     let attempts = 0;
     while (attempts < this.keys.length) {
       const key = this.keys[this.currentIndex];
+      if (!key) {
+        this.currentIndex = (this.currentIndex + 1) % this.keys.length;
+        attempts++;
+        continue;
+      }
       const today = new Date().toDateString();
       const usage = this.keyUsage.get(key + today) || 0;
       
@@ -438,29 +458,32 @@ class ApiKeyManager {
   }
 
   recordUsage(key, units = 100) {
+    if (!key) return;
     const today = new Date().toDateString();
     const currentUsage = this.keyUsage.get(key + today) || 0;
     this.keyUsage.set(key + today, currentUsage + units);
     
     if (currentUsage + units >= this.dailyLimit) {
       this.quotaExhaustedKeys.add(key);
-      console.log(`⚠️ API 키 할당량 도달: ${key.substring(0, 20)}...`);
+      console.log(`⚠️ API 키 할당량 도달: ${maskKey(key)}`);
     }
   }
 
   markKeyAsExhausted(key) {
+    if (!key) return;
     this.quotaExhaustedKeys.add(key);
-    console.log(`🚫 API 키 할당량 초과: ${key.substring(0, 20)}...`);
+    console.log(`🚫 API 키 할당량 초과: ${maskKey(key)}`);
   }
 
   switchToNextKey() {
+    if (this.keys.length === 0) return;
     this.currentIndex = (this.currentIndex + 1) % this.keys.length;
   }
 
   getKeyStatus() {
     const today = new Date().toDateString();
     return this.keys.map(key => ({
-      key: key.substring(0, 20) + '...',
+      key: maskKey(key),
       usage: this.keyUsage.get(key + today) || 0,
       limit: this.dailyLimit,
       exhausted: this.quotaExhaustedKeys.has(key),
@@ -469,7 +492,7 @@ class ApiKeyManager {
   }
 
   hasAvailableKeys() {
-    return this.getNextKey() !== null;
+    return Boolean(this.getNextKey());
   }
 
   resetDailyQuota() {
@@ -480,11 +503,11 @@ class ApiKeyManager {
 }
 
 const apiKeyManager = new ApiKeyManager();
-// 하드코딩된 YouTube API 키 설정
-apiKeyManager.setKeys([API_KEYS.YOUTUBE_API_KEY]);
 
 // OpenAI API 호출 함수
 async function callOpenAI(messages, model = 'gpt-4o', maxTokens = 2000) {
+  const apiKey = requireApiKey(API_KEYS.OPENAI_API_KEY, 'OPENAI_API_KEY', 'OpenAI');
+
   try {
     const response = await axios.post('https://api.openai.com/v1/chat/completions', {
       model: model,
@@ -496,7 +519,7 @@ async function callOpenAI(messages, model = 'gpt-4o', maxTokens = 2000) {
       presence_penalty: 0
     }, {
       headers: {
-        'Authorization': `Bearer ${API_KEYS.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       }
     });
@@ -510,6 +533,8 @@ async function callOpenAI(messages, model = 'gpt-4o', maxTokens = 2000) {
 
 // Claude API 호출 함수
 async function callClaude(prompt, maxTokens = 2000) {
+  const apiKey = requireApiKey(API_KEYS.CLAUDE_API_KEY, 'CLAUDE_API_KEY', 'Claude');
+
   try {
     const response = await axios.post('https://api.anthropic.com/v1/messages', {
       model: 'claude-sonnet-4-20250514',
@@ -523,7 +548,7 @@ async function callClaude(prompt, maxTokens = 2000) {
       temperature: 0.7
     }, {
       headers: {
-        'x-api-key': API_KEYS.CLAUDE_API_KEY,
+        'x-api-key': apiKey,
         'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01'
       }
@@ -551,7 +576,7 @@ async function callYouTubeAPI(endpoint, params, retries = 3) {
     console.log(`🔍 YouTube API 호출: ${endpoint}`, { 
       keyword: params.q || '검색어', 
       maxResults: params.maxResults || 25,
-      keyUsed: apiKey.substring(0, 20) + '...'
+      keyUsed: maskKey(apiKey)
     });
 
     const response = await axios.get(url, { 
@@ -571,7 +596,7 @@ async function callYouTubeAPI(endpoint, params, retries = 3) {
       
       if (errorMessage.includes('quota') || errorMessage.includes('Quota') || 
           errorMessage.includes('exceeded') || errorMessage.includes('limit')) {
-        console.log(`🚫 API 키 할당량 초과: ${apiKey.substring(0, 20)}...`);
+        console.log(`🚫 API 키 할당량 초과: ${maskKey(apiKey)}`);
         apiKeyManager.markKeyAsExhausted(apiKey);
         
         if (retries > 0 && apiKeyManager.hasAvailableKeys()) {
